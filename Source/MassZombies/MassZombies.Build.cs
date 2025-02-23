@@ -8,13 +8,21 @@ public class MassZombies : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_2;
+		IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
 
 		// List of public dependency module names. These are modules that are required by our public source files
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "MassEntity", "MassSpawner", "ChaosVehicles" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "MassSpawner", "ChaosVehicles" });
 
 		// List of private dependency module names. These are modules that our private code depends on but nothing in our public include files depend on
-		PrivateDependencyModuleNames.AddRange(new string[] { "MassCommon", "StructUtils", "MassMovement", "MassAIBehavior", "MassNavigation", "MassActors" });
+		PrivateDependencyModuleNames.AddRange(new string[] { 
+			"MassCommon", 
+			"StructUtils", 
+			"MassMovement", 
+			"MassAIBehavior", 
+			"MassNavigation", 
+			"MassActors",
+			"MassEntity"
+		});
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });

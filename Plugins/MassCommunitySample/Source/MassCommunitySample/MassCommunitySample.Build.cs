@@ -73,7 +73,6 @@ public class MassCommunitySample : ModuleRules
 
 		if (Target.bBuildEditor)
 		{
-			PrivateDependencyModuleNames.Add("CodeView");
 			PrivateDependencyModuleNames.Add("UnrealEd");
 		}
 		
