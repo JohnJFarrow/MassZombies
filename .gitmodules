@@ -1,0 +1,3 @@
+[submodule "Plugins/GDMassExtensions"]
+	path = Plugins/GDMassExtensions
+	url = https://github.com/JohnJFarrow/GDMassExtensions
