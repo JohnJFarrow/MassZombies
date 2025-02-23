@@ -8,9 +8,52 @@
 #include "MassMovementFragments.h"
 #include "MassSimulationSubsystem.h"
 #include "MassRepresentationFragments.h"
+#include "Chaos/DebugDrawQueue.h"
 #include "Experimental/LambdaBasedMassProcessor.h"
 #include "Physics/Experimental/PhysScene_Chaos.h"
 #include "PhysicsProxy/SingleParticlePhysicsProxy.h"
+
+#if CHAOS_DEBUG_DRAW
+Chaos::DebugDraw::FChaosDebugDrawSettings ChaosMassPhysDebugDebugDrawSettings(
+	/* ArrowSize =					*/ 1.5f,
+	/* BodyAxisLen =				*/ 4.0f,
+	/* ContactLen =					*/ 4.0f,
+	/* ContactWidth =				*/ 2.0f,
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 4
+	/* ContactPhiWidth =			*/ 0.0f, //this isn't around in 5.4?
+#endif
+
+	/* ContactInfoWidth				*/ 2.0f,
+	/* ContactOwnerWidth =			*/ 0.0f,
+	/* ConstraintAxisLen =			*/ 5.0f,
+	/* JointComSize =				*/ 2.0f,
+	/* LineThickness =				*/ 0.15f,
+	/* DrawScale =					*/ 1.0f,
+	/* FontHeight =					*/ 10.0f,
+	/* FontScale =					*/ 1.5f,
+	/* ShapeThicknesScale =			*/ 1.0f,
+	/* PointSize =					*/ 2.0f,
+	/* VelScale =					*/ 0.0f,
+	/* AngVelScale =				*/ 0.0f,
+	/* ImpulseScale =				*/ 0.0f,
+	/* PushOutScale =				*/ 0.0f,
+	/* InertiaScale =				*/ 0.0f,
+	/* DrawPriority =				*/ 10.0f,
+	/* bShowSimple =				*/ true,
+	/* bShowComplex =				*/ false,
+	/* bInShowLevelSetCollision =	*/ false,
+	/* InShapesColorsPerState =     */ Chaos::DebugDraw::GetDefaultShapesColorsByState(),
+	/* InShapesColorsPerShaepType=  */ Chaos::DebugDraw::GetDefaultShapesColorsByShapeType(),
+	/* InBoundsColorsPerState =     */ Chaos::DebugDraw::GetDefaultBoundsColorsByState(),
+	/* InBoundsColorsPerShapeType=  */ Chaos::DebugDraw::GetDefaultBoundsColorsByShapeType()
+);
+
+
+TAutoConsoleVariable<bool> CVMSDrawChaosBodies(
+	TEXT("ms.drawchaosbodies"),
+	false,
+	TEXT("draw debug info for all mass chaos bodies using the chaos debug draw queue, make sure you also called p.Chaos.DebugDraw.Enabled 1"));
+#endif
 
 UMSChaosMassTranslationProcessorsProcessors::UMSChaosMassTranslationProcessorsProcessors()
 {
@@ -76,7 +119,7 @@ void UMSChaosMassTranslationProcessorsProcessors::Execute(FMassEntityManager& En
 				// I feel like we should figure out if this actually matters or not
 				Body_External.ClearKinematicTarget();
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4
 				if (Body_External.UpdateKinematicFromSimulation())
 				{
 					Body_External.SetKinematicTarget(NewPose + FTransform(Forces[i].Value));
@@ -109,6 +152,37 @@ void UMSChaosMassTranslationProcessorsProcessors::Execute(FMassEntityManager& En
 				// Always update the bounds?
 				Body_External.UpdateShapeBounds();
 			}
+
+#if CHAOS_DEBUG_DRAW
+			if(CVMSDrawChaosBodies.GetValueOnAnyThread())
+			{
+				if (GetWorld()->GetPhysicsScene() && PhysicsHandle)
+				{
+					Chaos::FRigidBodyHandle_External& Body_External = PhysicsHandle->GetGameThreadAPI();
+
+					
+					Chaos::FShapeOrShapesArray ShapeUnion;
+					if(Body_External.ShapesArray().Num() == 1)
+					{
+						ShapeUnion = Chaos::FShapeOrShapesArray(Body_External.ShapesArray()[0].Get());
+					}
+					else if(Body_External.ShapesArray().Num() > 1)
+					{
+						ShapeUnion = Chaos::FShapeOrShapesArray(&Body_External.ShapesArray());
+					}
+
+					
+
+					Chaos::FRigidTransform3 RigidTransform(Body_External.X(), Body_External.R());
+					Chaos::DebugDraw::DrawShape(RigidTransform,
+						Body_External.Geometry().Get(),ShapeUnion,
+						FColor::Silver,&ChaosMassPhysDebugDebugDrawSettings);
+
+				}
+				
+			}
+#endif
+				
 		}
 		static_assert(std::is_convertible_v<FPhysicsActorHandle, FMSMassPhysicsFragment>,
 		              "We want to convert from FMSMassPhysicsFragment to FMSMassPhysicsFragment here to avoid making new array or this reinterpret_cast is going to get weird")

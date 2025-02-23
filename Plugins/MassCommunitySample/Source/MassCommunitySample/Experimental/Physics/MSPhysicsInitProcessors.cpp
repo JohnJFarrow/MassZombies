@@ -67,7 +67,7 @@ FPhysicsActorHandle InitAndAddNewChaosBody(FActorCreationParams& ActorParams, co
 	FPhysicsInterface::CreateActor(ActorParams, NewPhysHandle);
 
 	FPhysicsInterface::SetCcdEnabled_AssumesLocked(NewPhysHandle, false);
-	// no clue about this one
+	// we don't want the extra pruning work here as these are generally dynamic meshes...?
 	FPhysicsInterface::SetSmoothEdgeCollisionsEnabled_AssumesLocked(NewPhysHandle, false);
 	// this seems to help make it not wiggle on the ground
 	FPhysicsInterface::SetInertiaConditioningEnabled_AssumesLocked(NewPhysHandle, true);
@@ -102,7 +102,7 @@ FPhysicsActorHandle InitAndAddNewChaosBody(FActorCreationParams& ActorParams, co
 	//CreateGeometryParams.ChaosTriMeshes = MakeArrayView(CylinderMeshBody->ChaosTriMeshes);
 
 	// helper that makes our geom list 		
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 3
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 4
 	TArray<TUniquePtr<Chaos::FImplicitObject>> Geoms;
 #else
 	TArray<Chaos::FImplicitObjectPtr> Geoms;
@@ -116,32 +116,36 @@ FPhysicsActorHandle InitAndAddNewChaosBody(FActorCreationParams& ActorParams, co
 
 	// geo before shapes
 	// mimicking landscape.cpp
-	if (Geoms.Num() == 1)
+
+	
+	if (Geoms.Num() > 0)
 	{
-		Body_External.SetGeometry(MoveTemp(Geoms[0]));
+		// if we already have geometry, merge it
+		if (Body_External.GetGeometry())
+		{
+			Body_External.MergeGeometry(MoveTemp(Geoms));
+		}
+		else
+		{
+			// I'm not super clear on what Chaos expects here?
+			Chaos::FImplicitObjectUnion ChaosUnionPtr = Chaos::FImplicitObjectUnion(MoveTemp(Geoms));
+			Body_External.SetGeometry(ChaosUnionPtr.CopyGeometry());
+		}
 	}
-	else
-	{
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 3
-	  Body_External.SetGeometry(MakeUnique<Chaos::FImplicitObjectUnion>(MoveTemp(Geoms)));
-#else
-		Body_External.MergeGeometry(MoveTemp(Geoms));
-#endif
-	}
+
 
 	// Construct Shape Bounds
 	for (auto& Shape : Shapes)
 	{
 		Chaos::FRigidTransform3 WorldTransform = Chaos::FRigidTransform3(Body_External.X(), Body_External.R());
 		Shape->UpdateShapeBounds(WorldTransform);
-
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 3
-		Body_External.SetShapesArray(MoveTemp(Shapes));
-#else
-		Body_External.MergeShapesArray(MoveTemp(Shapes));
-#endif
+		
 	}
-
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 3
+	Body_External.SetShapesArray(MoveTemp(Shapes));
+#else
+	Body_External.MergeShapesArray(MoveTemp(Shapes));
+#endif
 
 	// Calculate the mass properties based on the shapes assuming uniform density
 	Chaos::FMassProperties MassProps;
@@ -157,7 +161,7 @@ FPhysicsActorHandle InitAndAddNewChaosBody(FActorCreationParams& ActorParams, co
 	return NewPhysHandle;
 }
 
-UMSPhysicsInitProcessor::UMSPhysicsInitProcessor()
+UMSPhysicsInitProcessor::UMSPhysicsInitProcessor() : EntityQuery(*this)
 {
 	ObservedType = FMSMassPhysicsFragment::StaticStruct();
 	Operation = EMassObservedOperation::Add;
@@ -212,7 +216,7 @@ void UMSPhysicsInitProcessor::Execute(FMassEntityManager& EntityManager, FMassEx
 			ActorParams.bSimulatePhysics = true;
 			CollisionEnabled = ECollisionEnabled::QueryAndPhysics;
 		};
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4
 		ActorParams.bUpdateKinematicFromSimulation = Context.DoesArchetypeHaveTag<FMSUpdateKinematicFromSimulationTag>();
 #endif
 		
@@ -257,9 +261,9 @@ void UMSPhysicsInitProcessor::Execute(FMassEntityManager& EntityManager, FMassEx
 			return;
 		}
 
-		// #if USE_BODYINSTANCE_DEBUG_NAMES
-		// 		ActorParams.DebugName = (char*)*FString("MassPhysicsBody");
-		// #endif
+		#if USE_BODYINSTANCE_DEBUG_NAMES
+				ActorParams.DebugName = (char*)*FString("MassPhysicsBody");
+		#endif
 
 
 		// the weird indirection is because FPhysicsUserData stores an enum about what it is with this ctor
@@ -284,6 +288,11 @@ void UMSPhysicsInitProcessor::Execute(FMassEntityManager& EntityManager, FMassEx
 
 			FPhysicsActorHandle NewHandle = InitAndAddNewChaosBody(ActorParams, CollisionData, AggregateGeom, Density);
 
+			if(!NewHandle)
+			{
+				continue;
+			}
+			
 			Chaos::FRigidBodyHandle_External& Body_External = NewHandle->GetGameThreadAPI();
 
 			// "SetUserData" required for queries hitting this it seems due to SetHitResultFromShapeAndFaceIndex
@@ -304,7 +313,7 @@ void UMSPhysicsInitProcessor::Execute(FMassEntityManager& EntityManager, FMassEx
 }
 
 
-UMSPhysicsCleanupProcessor::UMSPhysicsCleanupProcessor()
+UMSPhysicsCleanupProcessor::UMSPhysicsCleanupProcessor() : EntityQuery(*this)
 {
 	ObservedType = FMSMassPhysicsFragment::StaticStruct();
 	Operation = EMassObservedOperation::Remove;

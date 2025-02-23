@@ -16,19 +16,18 @@ class MASSCOMMUNITYSAMPLE_API UMSEntityCollisionQueryProcessors : public UMassPr
 	GENERATED_BODY()
 
 	UMSEntityCollisionQueryProcessors();
-
-protected:
+	
 	virtual void ConfigureQueries() override;
 
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
-
-public:
+	
 	virtual void Initialize(UObject& Owner) override;
 
-protected:
 	// Yeah... I know
 	FMassEntityQuery OctreeQueryQuery;
 
 	UPROPERTY()
-	class UMSSubsystem* MSSubsystem;;
+	 TObjectPtr<class UMSSubsystem> MSSubsystem;
 };
+
+

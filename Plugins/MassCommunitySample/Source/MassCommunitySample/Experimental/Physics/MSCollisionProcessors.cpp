@@ -45,11 +45,10 @@ void UMSEntityCollisionQueryProcessors::Execute(FMassEntityManager& EntityManage
 {
 	FMSOctree2& MSOctree2 = MSSubsystem->Octree2;
 
-	UE_LOG(LogTemp, Warning, TEXT("lulw"));
 	// Other entities we hit
 	TQueue<FMassEntityHandle, EQueueMode::Mpsc> EntitiesCollided;
 	std::atomic<int32> EntitiesThatWereHitNum(0);
-
+	
 	TArray<FMassExecutionContext> Contexts;
 	OctreeQueryQuery.ForEachEntityChunk(EntityManager, Context, [&](FMassExecutionContext& Context)
 	{
@@ -79,7 +78,7 @@ void UMSEntityCollisionQueryProcessors::Execute(FMassEntityManager& EntityManage
 			MSOctree2.FindElementsWithBoundsTest(QueryBounds, [&](const FMSEntityOctreeElement& Element)
 			{
 				if (FMath::LineBoxIntersection(Element.Bounds.GetBox(), PrevLocation, CurrentLocation, CurrentLocation - PrevLocation) && Element.
-				                                                                                                                          EntityHandle.Index != Context.GetEntity(i).Index)
+					EntityHandle.Index != Context.GetEntity(i).Index)
 				{
 					EntitiesFound.Add(Element.EntityHandle);
 				}
@@ -114,6 +113,9 @@ void UMSEntityCollisionQueryProcessors::Execute(FMassEntityManager& EntityManage
 	if (EntitiesThatWereHitNum > 0)
 	{
 		TArray<FMassEntityHandle> Entities = UE::Mass::Utils::EntityQueueToArray(EntitiesCollided, EntitiesThatWereHitNum);
-		Context.GetMutableSubsystem<UMassSignalSubsystem>()->SignalEntities(MassSample::Signals::OnEntityHitSomething, Entities);
+		if (UMassSignalSubsystem* SignalSubsystem = Context.GetMutableSubsystem<UMassSignalSubsystem>())
+		{
+			SignalSubsystem->SignalEntitiesDeferred(Context, MassSample::Signals::OnEntityHitSomething, Entities);
+		}
 	}
 }

@@ -22,7 +22,6 @@ struct MASSCOMMUNITYSAMPLE_API FMSMassPhysicsFragment : public FMassFragment
 		SingleParticlePhysicsProxy = ParticlePhysicsProxy;
 	};
 };
-
 // Imitates the collision shapes a static mesh would normally have
 USTRUCT(BlueprintType)
 struct FSharedCollisionSettingsFragment : public FMassSharedFragment
@@ -34,15 +33,6 @@ struct FSharedCollisionSettingsFragment : public FMassSharedFragment
 	// these arrays are all editfixed size... blegh
 	UPROPERTY(EditAnywhere)
 	FKAggregateGeom Geometry;
-
-	UPROPERTY(Category="Capsule", EditAnywhere)
-	float CapsuleRadius = 40.0f;
-
-	UPROPERTY(Category="Capsule", EditAnywhere)
-	float CapsuleLength = 120.0f;
-
-	UPROPERTY(Category="Capsule", EditAnywhere)
-	FRotator CapsuleRotation;
 };
 
 // Whether we are kinematic or simulating physics

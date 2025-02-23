@@ -41,8 +41,6 @@ protected:
 	virtual bool Link(FStateTreeLinker& Linker) override;
 	virtual const UStruct* GetInstanceDataType() const override { return FMassNavMeshPathFollowTaskInstanceData::StaticStruct(); };
 	
-	//virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const EStateTreeStateChangeType ChangeType, const FStateTreeTransitionResult& Transition) const override;
-	
 	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
 
 	TStateTreeExternalDataHandle<FTransformFragment> TransformHandle;
@@ -81,23 +79,7 @@ protected:
 	};
 	virtual const UStruct* GetInstanceDataType() const override { return FMassFindNavMeshPathTargetInstanceData::StaticStruct(); };
 
-	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override
-	{
-
-		auto NavSystem = Cast<UNavigationSystemV1>(Context.GetWorld()->GetNavigationSystem());
-		FNavLocation NavLocation;
-		const FVector Origin = Context.GetExternalData(TransformHandle).GetTransform().GetLocation();
-
-
-		// todo-navigation pass in nav property stuff
-		NavSystem->GetRandomReachablePointInRadius(Origin,Radius,NavLocation);
-
-		FMassFindNavMeshPathTargetInstanceData& InstanceData = Context.GetInstanceData<FMassFindNavMeshPathTargetInstanceData>(*this);
-
-		InstanceData.MoveTargetLocation = NavLocation.Location;
-
-		return EStateTreeRunStatus::Running;
-	};
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;;
 
 
 
